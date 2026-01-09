@@ -64,3 +64,5 @@ The instructions have the following data members:
 ## Implementation Details
 
 When receiving an instruction, the station immediately tries to read its operand values according to the RF in the ROB. If a CDB broadcast is also received in the same cycle, the station also compares its ROB index with the ROB index of the input instruction. Otherwise this value would be effectively lost forever.
+
+To avoid data hazards of memory, the load/store reservation station must fire the instructions in order, so its data structure is `ClearQueue` instead of `Reg(Vec)`.
