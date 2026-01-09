@@ -1,6 +1,6 @@
 # Overview
 
-This is a CPU simulator using Tomasulo's algorithm, written in Chisel. It uses the RISC-V instruction set.
+This is a CPU simulator using Tomasulo's algorithm, written in Chisel. It uses the RISC-V RV32I instruction set.
 
 ## Tomasulo's Algorithm
 
@@ -8,9 +8,9 @@ Tomasulo's algorithm is a hardware algorithm for dynamic scheduling of instructi
 
 ## Key Components
 
-### Instruction Queue
+### Instruction Fetch
 
-The instruction queue holds decoded instructions that are waiting to be issued to reservation stations. It ensures that instructions are processed in program order for correct execution.
+The instruction fetch unit also combines the decoder. It holds the program counter, decodes instructions, and issues them in order. It ensures that instructions are processed in program order for correct execution.
 
 ### Reservation Stations
 
