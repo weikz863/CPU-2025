@@ -1,4 +1,4 @@
-# ALU
+# Arithmetic-Logic Unit
 
 ## Overview
 
