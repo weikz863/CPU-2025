@@ -19,3 +19,10 @@ object MemOpEnum extends ChiselEnum {
   val sh = Value
   val sw = Value
 }
+
+class MemInput extends Bundle {
+  val op = MemOpEnum()
+  val value = UInt(32.W)
+  val address = UInt(32.W)
+  val index = UInt(5.W)
+}

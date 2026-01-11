@@ -4,7 +4,9 @@ import chisel3.experimental._
 import chisel3.util.experimental.loadMemoryFromFile
 import utils._
 
-class Memory(initFile: String, memSize: Int) extends Module {
+class Memory(initFile: String, memSize: Int, delay: Int) extends Module {
+  require(delay >= 3, s"Memory delay must be >= 3, got $delay.")
+
   // Helper function to convert Intel HEX format to simple hex format for loadMemoryFromFile
   private def convertIntelHexToSimpleHex(inputFile: String, outputFile: String): Unit = {
     import java.io.{BufferedReader, BufferedWriter, FileReader, FileWriter}
@@ -71,18 +73,13 @@ class Memory(initFile: String, memSize: Int) extends Module {
       val data = UInt(32.W)
       val valid = Bool()
     })
-    val memAccess = Input(new Bundle {
-      val op = MemOpEnum()
-      val value = UInt(32.W)
-      val address = UInt(32.W)
-      val index = UInt(5.W)
-      val valid = Bool()
-    })
+    val memAccess = Flipped(ValidIO(new MemInput))
     val memValue = Output(new Bundle {
       val ready = Bool()
-      val data = ValidIO(new CDBData)
+      val data = Valid(new CDBData)
     })
     val clear = Input(Bool())
+    val commit = Input(Bool())
   })
 
   val mem = SyncReadMem(memSize, UInt(8.W))
@@ -96,7 +93,107 @@ class Memory(initFile: String, memSize: Int) extends Module {
   val instruction2 = RegNext(mem.read(Mux(io.iread.valid, io.iread.address, 0.U) + 2.U), 0.U)
   val instruction3 = RegNext(mem.read(Mux(io.iread.valid, io.iread.address, 0.U) + 3.U), 0.U)
   
-  io.iout.ready := true.B
-  io.iout.valid := RegNext(io.iread.valid)
+  val iReadyReg = RegInit(true.B)
+  val iValidReg = RegInit(false.B)
+
+  io.iout.ready := iReadyReg
+  io.iout.valid := iValidReg
   io.iout.data := Cat(instruction3, instruction2, instruction1, instruction0)
+
+  when(io.clear) {
+    iReadyReg := true.B
+    iValidReg := false.B
+  }.otherwise {
+    assert(!(!iReadyReg && io.iread.valid), "Instruction memory should not be read when busy")
+    iReadyReg := !io.iread.valid
+    iValidReg := !iReadyReg
+  }
+  
+  val cnt = new Counter(delay)
+  val memInput = RegInit(0.U.asTypeOf(new Valid(new MemInput)))
+  val memOutput = RegInit(0.U.asTypeOf(new CDBData))
+  val data0 = RegNext(mem.read(memInput.bits.address + 0.U), 0.U)
+  val data1 = RegNext(mem.read(memInput.bits.address + 1.U), 0.U)
+  val data2 = RegNext(mem.read(memInput.bits.address + 2.U), 0.U)
+  val data3 = RegNext(mem.read(memInput.bits.address + 3.U), 0.U)
+
+  val mValidReg = RegInit(false.B)
+  mValidReg := false.B
+
+  io.memValue.ready := !memInput.valid
+  io.memValue.data.valid := mValidReg
+  io.memValue.data.bits := memOutput
+
+  when (io.clear) {
+    cnt.reset()
+    memInput := 0.U.asTypeOf(new Valid(new MemInput))
+  }.otherwise {
+    when (io.memAccess.valid) {
+      assert(!memInput.valid, "Memory should not be accessed when busy")
+      memInput := io.memAccess
+      when (io.memAccess.bits.op === MemOpEnum.lb  || 
+            io.memAccess.bits.op === MemOpEnum.lbu || 
+            io.memAccess.bits.op === MemOpEnum.lh  || 
+            io.memAccess.bits.op === MemOpEnum.lhu || 
+            io.memAccess.bits.op === MemOpEnum.lw) {
+        cnt.inc()
+      }
+    }
+    when (memInput.valid) {
+      when (cnt.value =/= 0.U) { // load
+        assert (memInput.bits.op === MemOpEnum.lb  || 
+                memInput.bits.op === MemOpEnum.lbu || 
+                memInput.bits.op === MemOpEnum.lh  || 
+                memInput.bits.op === MemOpEnum.lhu || 
+                memInput.bits.op === MemOpEnum.lw)
+        when (cnt.inc()) { // output
+          memInput.valid := false.B
+          mValidReg := true.B
+          memOutput.index := memInput.bits.index
+          switch (memInput.bits.op) {
+            is (MemOpEnum.lb) {
+              memOutput.value := Cat(Fill(24, data0(7)), data0)
+            }
+            is (MemOpEnum.lbu) {
+              memOutput.value := Cat(Fill(24, 0.B), data0)
+            }
+            is (MemOpEnum.lh) {
+              memOutput.value := Cat(Fill(16, data1(7)), data1, data0)
+            }
+            is (MemOpEnum.lhu) {
+              memOutput.value := Cat(Fill(16, 0.B), data1, data0)
+            }
+            is (MemOpEnum.lw) {
+              memOutput.value := Cat(data3, data2, data1, data0)
+            }
+          }
+        }
+      }.otherwise { // store
+        assert (memInput.bits.op === MemOpEnum.sb || 
+                memInput.bits.op === MemOpEnum.sh || 
+                memInput.bits.op === MemOpEnum.sw )
+        when (io.commit) { // output
+          memInput.valid := false.B
+          mValidReg := true.B
+          memOutput.index := memInput.bits.index
+          memOutput.value := 0.U
+          switch (memInput.bits.op) {
+            is (MemOpEnum.sb) {
+              mem.write(memInput.bits.address, memInput.bits.value(7, 0))
+            }
+            is (MemOpEnum.sh) {
+              mem.write(memInput.bits.address, memInput.bits.value(7, 0))
+              mem.write(memInput.bits.address + 1.U, memInput.bits.value(15, 8))
+            }
+            is (MemOpEnum.sw) {
+              mem.write(memInput.bits.address, memInput.bits.value(7, 0))
+              mem.write(memInput.bits.address + 1.U, memInput.bits.value(15, 8))
+              mem.write(memInput.bits.address + 2.U, memInput.bits.value(23, 16))
+              mem.write(memInput.bits.address + 3.U, memInput.bits.value(31, 24))
+            }
+          }
+        }
+      }
+    }
+  }
 }

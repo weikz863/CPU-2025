@@ -33,7 +33,7 @@ It is guaranteed that `Iread` and `mem_access` don't access the same memory.
 
 The memory is implemented in Chisel as `SyncReadMem`, its outputs go through a `ShiftRegister` to simulate lag. The memory is initialized by reading from a file. The file format currently supported is Dump Hex, `memory-example.data` is an example. As `loadMemoryFromFile` only accepts raw data files, the input is converted by a helper function to `{filename}.converted`.
 
-TODO: .hex format support
+TODO: refactor with SRAM, with automatic .hex format support
 
 The memory is little-endian: byte order should be reversed in IF and load/store.
 
