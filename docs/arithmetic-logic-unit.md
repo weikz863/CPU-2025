@@ -40,9 +40,6 @@ The ALU consists of combinational or pipelined circuits for arithmetic and logic
 3. **Computation**: Performs integer arithmetic/logic operations in 1-2 cycles.
 4. **Result Generation**: Once computation completes, `result_valid` is asserted with the result and tag.
 5. **Broadcasting**: Result is sent to the Common Data Bus for distribution. The ALU is ready to handle new data.
-6. **Backpressure**: Before the result is sent to CDB, it goes through a small buffer to smooth out backpressure.
-7. **Reset**: On reset, clears internal state and becomes ready.
+6. **Reset**: On reset, clears internal state and becomes ready.
 
 ## Implementation Details
-
-The result goes through a `ShiftRegister` to simulate lag.

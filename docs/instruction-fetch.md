@@ -6,7 +6,9 @@ The Instruction Fetch module has the following IO ports:
 
 ### Inputs
 
-- `reset`: reset program counter to value, from ROB, valid protocol
+- `reset`: Value to reset program counter to, from ROB with validness indicator.
+- `instruction`: Instruction read from memory.
+- `instruction_ready`: Readiness indicator of memory.
 
 ### Outputs
 
@@ -17,7 +19,7 @@ The Instruction Fetch module has the following IO ports:
 
 ### Structure
 
-The Instruction Fetch has an asynchronous memory as instruction memory, a program counter, a decoder and a FIFO buffer with a fixed depth (i.e. chisel Queue) of decoded instructions.
+The Instruction Fetch has a program counter, a decoder and a FIFO buffer queue of decoded instructions.
 
 ### Operation
 

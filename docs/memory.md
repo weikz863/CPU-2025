@@ -2,7 +2,7 @@
 
 ## Overview
 
-The memory is divided into two parts, ROM, which stores the program, and RAM, which stores data.
+The memory is (imaginarily) divided into two parts, ROM, which stores the program, and RAM, which stores data.
 
 ## Ports
 
@@ -31,7 +31,9 @@ On `mem_access` valid signal, if the operation is a read, read memory at `addres
 
 It is guaranteed that `Iread` and `mem_access` don't access the same memory.
 
-The memory is implemented in Chisel as `SyncReadMem`, its outputs go through a `ShiftRegister` to simulate lag. The memory is initialized by reading from a file. The file format is Intel Hex, `memory-example.data` is an example. As `loadMemoryFromFile` only accepts raw data files, the input is converted by a helper function to `{filename}.converted`.
+The memory is implemented in Chisel as `SyncReadMem`, its outputs go through a `ShiftRegister` to simulate lag. The memory is initialized by reading from a file. The file format currently supported is Dump Hex, `memory-example.data` is an example. As `loadMemoryFromFile` only accepts raw data files, the input is converted by a helper function to `{filename}.converted`.
+
+TODO: .hex format support
 
 The memory is little-endian: byte order should be reversed in IF and load/store.
 
