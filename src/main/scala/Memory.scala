@@ -5,7 +5,7 @@ import chisel3.util.experimental.loadMemoryFromFile
 import utils._
 
 class Memory(initFile: String, memSize: Int, delay: Int) extends Module {
-  require(delay >= 3, s"Memory delay must be >= 3, got $delay.")
+  require(delay >= 4, s"Memory delay must be >= 4, got $delay.")
 
   // Helper function to convert Intel HEX format to simple hex format for loadMemoryFromFile
   private def convertIntelHexToSimpleHex(inputFile: String, outputFile: String): Unit = {
