@@ -5,6 +5,10 @@ import utils._
 class Core(initFile: String = "", memSize: Int = 4096, memDelay: Int = 4) extends Module {
   val io = IO(new Bundle {
     val halted = Output(Bool())
+    val commit = Output(Bool())
+    val debug_pc = Output(UInt(32.W))
+    val debug_regs = Output(Vec(32, UInt(32.W)))
+    val debug_commit_op = Output(UInt(7.W))
   })
 
   // Modules
@@ -284,4 +288,9 @@ class Core(initFile: String = "", memSize: Int = 4096, memDelay: Int = 4) extend
     haltReg := true.B
   }
   io.halted := haltReg
+
+  io.commit := rob.io.writeback_valid || rob.io.commit_store
+  io.debug_pc := ifu.io.debug_pc
+  io.debug_regs := rf.io.debug_regs
+  io.debug_commit_op := rob.io.debug_commit_op
 }

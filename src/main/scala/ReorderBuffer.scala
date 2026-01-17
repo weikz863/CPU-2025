@@ -28,30 +28,33 @@ class ReorderBuffer(entries: Int = 32) extends Module {
 	}
 
 	val io = IO(new Bundle {
-		// issue
-		val issue_valid = Input(Bool())
-		val issue_bits = Input(new ROBIssueBits())
-		val issue_has_value = Input(Bool())
-		val issue_value = Input(UInt(32.W))
+	  // issue
+	  val issue_valid = Input(Bool())
+	  val issue_bits = Input(new ROBIssueBits())
+	  val issue_has_value = Input(Bool())
+	  val issue_value = Input(UInt(32.W))
 
-		// CDB snoop
-		val cdb = Input(Valid(new CDBData))
+	  // CDB snoop
+	  val cdb = Input(Valid(new CDBData))
 
-		// status / bypass
-		val ready = Output(Bool())
-		val tail = Output(UInt(idxWidth.W))
-		val values = Output(Vec(entries, new ROBValue()))
+	  // status / bypass
+	  val ready = Output(Bool())
+	  val tail = Output(UInt(idxWidth.W))
+	  val values = Output(Vec(entries, new ROBValue()))
 
-		// commit path to RF
-		val writeback_valid = Output(Bool())
-		val writeback_index = Output(UInt(5.W))
-		val writeback_tag = Output(UInt(idxWidth.W))
-		val writeback_value = Output(UInt(32.W))
+	  // commit path to RF
+	  val writeback_valid = Output(Bool())
+	  val writeback_index = Output(UInt(5.W))
+	  val writeback_tag = Output(UInt(idxWidth.W))
+	  val writeback_value = Output(UInt(32.W))
 
-		// commit notifications
-		val commit_store = Output(Bool())
-		val clear = Output(Bool())
-		val pc_reset = Output(UInt(32.W))
+	  // commit notifications
+	  val commit_store = Output(Bool())
+	  val clear = Output(Bool())
+	  val pc_reset = Output(UInt(32.W))
+
+	  // debug
+	  val debug_commit_op = Output(UInt(7.W))
 	})
 
 	val head = RegInit(0.U(idxWidth.W))
@@ -124,6 +127,8 @@ class ReorderBuffer(entries: Int = 32) extends Module {
 	val isJal = headEntry.op === "b1101111".U
 	val isStore = headEntry.op === "b0100011".U
 	val headReady = count =/= 0.U && headEntry.valid && headEntry.ready
+
+	io.debug_commit_op := RegNext(Mux(headReady, headEntry.op, 0.U))
 
 	// defaults for pulse outputs
 	writebackValidReg := false.B

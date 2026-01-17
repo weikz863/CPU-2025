@@ -30,6 +30,9 @@ class InstructionFetch(queueDepth: Int = 4) extends Module {
 
     // downstream consumer (ROB/RS/LSB)
     val out = Decoupled(new IFDecoded)
+
+    // debug
+    val debug_pc = Output(UInt(32.W))
   })
 
   val pcReg = RegInit(0.U(32.W))
@@ -102,4 +105,6 @@ class InstructionFetch(queueDepth: Int = 4) extends Module {
   when(io.mem_iout_valid) {
     busy := false.B
   }
+
+  io.debug_pc := pcReg
 }
