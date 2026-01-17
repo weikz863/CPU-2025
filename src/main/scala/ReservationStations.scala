@@ -2,11 +2,6 @@ import chisel3._
 import chisel3.util._
 import utils._
 
-class RSRobValue extends Bundle {
-  val valid = Bool()
-  val value = UInt(32.W)
-}
-
 class RSIssueBits extends Bundle {
   val op = AluOpEnum()
   val op1_index = UInt(5.W)
@@ -35,10 +30,8 @@ class ReservationStations(entries: Int = 4) extends Module {
     val clear = Input(Bool())
     val issue_valid = Input(Bool())
     val issue_bits = Input(new RSIssueBits())
-    val cdb_valid = Input(Bool())
-    val cdb_tag = Input(UInt(5.W))
-    val cdb_value = Input(UInt(32.W))
-    val rob_values = Input(Vec(32, new RSRobValue()))
+    val cdb = Input(Valid(new CDBData))
+    val rob_values = Input(Vec(32, new ROBValue()))
     val rf_regs = Input(Vec(32, RegisterEntry()))
     val fu_ready = Input(Bool())
     val issue_ready = Output(Bool())
@@ -110,16 +103,16 @@ class ReservationStations(entries: Int = 4) extends Module {
     }
 
     // CDB snoop
-    when(io.cdb_valid){
+    when(io.cdb.valid){
       for(i <- 0 until entries){
         when(table(i).busy){
-          when(!table(i).op1_ready && table(i).op1_tag === io.cdb_tag){
+          when(!table(i).op1_ready && table(i).op1_tag === io.cdb.bits.index){
             table(i).op1_ready := true.B
-            table(i).op1_val := io.cdb_value
+            table(i).op1_val := io.cdb.bits.value
           }
-          when(!table(i).op2_ready && table(i).op2_tag === io.cdb_tag){
+          when(!table(i).op2_ready && table(i).op2_tag === io.cdb.bits.index){
             table(i).op2_ready := true.B
-            table(i).op2_val := io.cdb_value
+            table(i).op2_val := io.cdb.bits.value
           }
         }
       }

@@ -6,23 +6,24 @@ class ReorderBufferTest extends AnyFreeSpec with ChiselScalatestTester {
 	"basic issue and commit" in {
 		test(new ReorderBuffer()) { c =>
 			// 单条算术：issue -> CDB 写回 -> 寄存器写回脉冲
+			c.io.issue_has_value.poke(false.B)
 			c.io.issue_valid.poke(true.B)
 			c.io.issue_bits.op.poke("b0110011".U) // R-type placeholder
 			c.io.issue_bits.rd.poke(3.U)
 			c.io.issue_bits.pc.poke(0.U)
 			c.io.issue_bits.prediction.poke(0.U)
 			c.io.issue_bits.pc_reset.poke(0.U)
-			c.io.cdb_valid.poke(false.B)
+			c.io.cdb.valid.poke(false.B)
 			c.clock.step()
 
 			// result arrives
 			c.io.issue_valid.poke(false.B)
-			c.io.cdb_valid.poke(true.B)
-			c.io.cdb_tag.poke(0.U)
-			c.io.cdb_value.poke("hDEADBEEF".U)
+			c.io.cdb.valid.poke(true.B)
+			c.io.cdb.bits.index.poke(0.U)
+			c.io.cdb.bits.value.poke("hDEADBEEF".U)
 			c.clock.step()
 
-			c.io.cdb_valid.poke(false.B)
+			c.io.cdb.valid.poke(false.B)
 			c.clock.step()
 
 			c.io.writeback_valid.expect(true.B)
@@ -37,6 +38,7 @@ class ReorderBufferTest extends AnyFreeSpec with ChiselScalatestTester {
 	"commits two entries in order" in {
 		test(new ReorderBuffer()) { c =>
 			// 两条算术按序提交，检查各自 rd/tag/value
+			c.io.issue_has_value.poke(false.B)
 			c.io.issue_valid.poke(true.B)
 			c.io.issue_bits.op.poke("b0110011".U)
 			c.io.issue_bits.rd.poke(5.U)
@@ -50,12 +52,12 @@ class ReorderBufferTest extends AnyFreeSpec with ChiselScalatestTester {
 
 			// write back first entry
 			c.io.issue_valid.poke(false.B)
-			c.io.cdb_valid.poke(true.B)
-			c.io.cdb_tag.poke(0.U)
-			c.io.cdb_value.poke(10.U)
+			c.io.cdb.valid.poke(true.B)
+			c.io.cdb.bits.index.poke(0.U)
+			c.io.cdb.bits.value.poke(10.U)
 			c.clock.step()
 
-			c.io.cdb_valid.poke(false.B)
+			c.io.cdb.valid.poke(false.B)
 			c.clock.step()
 
 			c.io.writeback_valid.expect(true.B)
@@ -64,12 +66,12 @@ class ReorderBufferTest extends AnyFreeSpec with ChiselScalatestTester {
 			c.io.writeback_value.expect(10.U)
 
 			// write back second entry
-			c.io.cdb_valid.poke(true.B)
-			c.io.cdb_tag.poke(1.U)
-			c.io.cdb_value.poke(20.U)
+			c.io.cdb.valid.poke(true.B)
+			c.io.cdb.bits.index.poke(1.U)
+			c.io.cdb.bits.value.poke(20.U)
 			c.clock.step()
 
-			c.io.cdb_valid.poke(false.B)
+			c.io.cdb.valid.poke(false.B)
 			c.clock.step()
 
 			c.io.writeback_valid.expect(true.B)
@@ -82,6 +84,7 @@ class ReorderBufferTest extends AnyFreeSpec with ChiselScalatestTester {
 	"values array reflects ready entries" in {
 		test(new ReorderBuffer()) { c =>
 			// CDB 写回后 values 数组正确暴露 valid/value
+			c.io.issue_has_value.poke(false.B)
 			c.io.issue_valid.poke(true.B)
 			c.io.issue_bits.op.poke("b0110011".U)
 			c.io.issue_bits.rd.poke(7.U)
@@ -91,9 +94,9 @@ class ReorderBufferTest extends AnyFreeSpec with ChiselScalatestTester {
 			c.clock.step()
 
 			c.io.issue_valid.poke(false.B)
-			c.io.cdb_valid.poke(true.B)
-			c.io.cdb_tag.poke(0.U)
-			c.io.cdb_value.poke(0x55.U)
+			c.io.cdb.valid.poke(true.B)
+			c.io.cdb.bits.index.poke(0.U)
+			c.io.cdb.bits.value.poke(0x55.U)
 			c.clock.step()
 
 			c.io.values(0).valid.expect(true.B)
@@ -105,22 +108,23 @@ class ReorderBufferTest extends AnyFreeSpec with ChiselScalatestTester {
 	"store commits without writeback" in {
 		test(new ReorderBuffer()) { c =>
 			// STORE：只产生 commit_store，不写寄存器
+			c.io.issue_has_value.poke(false.B)
 			c.io.issue_valid.poke(true.B)
 			c.io.issue_bits.op.poke("b0100011".U) // STORE
 			c.io.issue_bits.rd.poke(0.U)
 			c.io.issue_bits.pc.poke(0.U)
 			c.io.issue_bits.prediction.poke(0.U)
 			c.io.issue_bits.pc_reset.poke(0.U)
-			c.io.cdb_valid.poke(false.B)
+			c.io.cdb.valid.poke(false.B)
 			c.clock.step()
 
 			c.io.issue_valid.poke(false.B)
-			c.io.cdb_valid.poke(true.B)
-			c.io.cdb_tag.poke(0.U)
-			c.io.cdb_value.poke(15.U)
+			c.io.cdb.valid.poke(true.B)
+			c.io.cdb.bits.index.poke(0.U)
+			c.io.cdb.bits.value.poke(15.U)
 			c.clock.step()
 
-			c.io.cdb_valid.poke(false.B)
+			c.io.cdb.valid.poke(false.B)
 			c.clock.step()
 
 			c.io.commit_store.expect(true.B)
@@ -132,22 +136,23 @@ class ReorderBufferTest extends AnyFreeSpec with ChiselScalatestTester {
 	"branch mispredict triggers clear" in {
 		test(new ReorderBuffer()) { c =>
 			// 分支误判：触发 clear 与对齐后的 pc_reset
+			c.io.issue_has_value.poke(false.B)
 			c.io.issue_valid.poke(true.B)
 			c.io.issue_bits.op.poke("b1100011".U) // BRANCH
 			c.io.issue_bits.rd.poke(0.U)
 			c.io.issue_bits.pc.poke(0.U)
 			c.io.issue_bits.prediction.poke(1.U)
 			c.io.issue_bits.pc_reset.poke(12.U)
-			c.io.cdb_valid.poke(false.B)
+			c.io.cdb.valid.poke(false.B)
 			c.clock.step()
 
 			c.io.issue_valid.poke(false.B)
-			c.io.cdb_valid.poke(true.B)
-			c.io.cdb_tag.poke(0.U)
-			c.io.cdb_value.poke(0.U) // different from prediction
+			c.io.cdb.valid.poke(true.B)
+			c.io.cdb.bits.index.poke(0.U)
+			c.io.cdb.bits.value.poke(0.U) // different from prediction
 			c.clock.step()
 
-			c.io.cdb_valid.poke(false.B)
+			c.io.cdb.valid.poke(false.B)
 			c.clock.step()
 
 			c.io.clear.expect(true.B)
@@ -161,6 +166,7 @@ class ReorderBufferTest extends AnyFreeSpec with ChiselScalatestTester {
 	"mispredict flushes younger entries" in {
 		test(new ReorderBuffer()) { c =>
 			// 误判时清空 younger entries，保持 ready
+			c.io.issue_has_value.poke(false.B)
 			c.io.issue_valid.poke(true.B)
 			c.io.issue_bits.op.poke("b1100011".U)
 			c.io.issue_bits.rd.poke(0.U)
@@ -176,12 +182,12 @@ class ReorderBufferTest extends AnyFreeSpec with ChiselScalatestTester {
 			c.clock.step()
 
 			c.io.issue_valid.poke(false.B)
-			c.io.cdb_valid.poke(true.B)
-			c.io.cdb_tag.poke(0.U)
-			c.io.cdb_value.poke(0.U) // mispredict
+			c.io.cdb.valid.poke(true.B)
+			c.io.cdb.bits.index.poke(0.U)
+			c.io.cdb.bits.value.poke(0.U) // mispredict
 			c.clock.step()
 
-			c.io.cdb_valid.poke(false.B)
+			c.io.cdb.valid.poke(false.B)
 			c.clock.step()
 
 			c.io.clear.expect(true.B)
@@ -198,6 +204,7 @@ class ReorderBufferTest extends AnyFreeSpec with ChiselScalatestTester {
 		test(new ReorderBuffer(entries = 4)) { c =>
 			// 小深度填满后 ready 低，提交一项后恢复
 			for (_ <- 0 until 4) {
+				c.io.issue_has_value.poke(false.B)
 				c.io.issue_valid.poke(true.B)
 				c.io.issue_bits.op.poke("b0110011".U)
 				c.io.issue_bits.rd.poke(1.U)
@@ -210,12 +217,12 @@ class ReorderBufferTest extends AnyFreeSpec with ChiselScalatestTester {
 			c.io.ready.expect(false.B)
 
 			// free one slot
-			c.io.cdb_valid.poke(true.B)
-			c.io.cdb_tag.poke(0.U)
-			c.io.cdb_value.poke(1.U)
+			c.io.cdb.valid.poke(true.B)
+			c.io.cdb.bits.index.poke(0.U)
+			c.io.cdb.bits.value.poke(1.U)
 			c.clock.step()
 
-			c.io.cdb_valid.poke(false.B)
+			c.io.cdb.valid.poke(false.B)
 			c.clock.step()
 
 			c.io.ready.expect(true.B)

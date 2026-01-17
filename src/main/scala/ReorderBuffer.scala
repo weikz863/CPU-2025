@@ -1,5 +1,6 @@
 import chisel3._
 import chisel3.util._
+import utils._
 
 class ROBIssueBits extends Bundle {
 	val op = UInt(7.W)
@@ -30,11 +31,11 @@ class ReorderBuffer(entries: Int = 32) extends Module {
 		// issue
 		val issue_valid = Input(Bool())
 		val issue_bits = Input(new ROBIssueBits())
+		val issue_has_value = Input(Bool())
+		val issue_value = Input(UInt(32.W))
 
 		// CDB snoop
-		val cdb_valid = Input(Bool())
-		val cdb_tag = Input(UInt(idxWidth.W))
-		val cdb_value = Input(UInt(32.W))
+		val cdb = Input(Valid(new CDBData))
 
 		// status / bypass
 		val ready = Output(Bool())
@@ -88,10 +89,10 @@ class ReorderBuffer(entries: Int = 32) extends Module {
 	// issue phase
 	when(io.issue_valid && io.ready) {
 		entriesReg(tail).valid := true.B
-		entriesReg(tail).ready := false.B
+		entriesReg(tail).ready := io.issue_has_value
 		entriesReg(tail).op := io.issue_bits.op
 		entriesReg(tail).rd := io.issue_bits.rd
-		entriesReg(tail).value := 0.U
+		entriesReg(tail).value := Mux(io.issue_has_value, io.issue_value, 0.U)
 		entriesReg(tail).prediction := io.issue_bits.prediction
 		pcResetTable(tail) := io.issue_bits.pc_reset
 		tail := tail + 1.U
@@ -103,10 +104,16 @@ class ReorderBuffer(entries: Int = 32) extends Module {
 	}
 
 	// snoop CDB
-	when(io.cdb_valid) {
-		entriesReg(io.cdb_tag).value := io.cdb_value
-		when(entriesReg(io.cdb_tag).valid) {
-			entriesReg(io.cdb_tag).ready := true.B
+	when(io.cdb.valid) {
+		val idx = io.cdb.bits.index
+		when(entriesReg(idx).valid) {
+			when(entriesReg(idx).op === "b1100111".U) { // JALR
+				entriesReg(idx).ready := true.B
+				pcResetTable(idx) := io.cdb.bits.value
+			}.otherwise {
+				entriesReg(idx).value := io.cdb.bits.value
+				entriesReg(idx).ready := true.B
+			}
 		}
 	}
 
@@ -114,6 +121,7 @@ class ReorderBuffer(entries: Int = 32) extends Module {
 	val headEntry = entriesReg(head)
 	val isBranch = headEntry.op === "b1100011".U
 	val isJalr = headEntry.op === "b1100111".U
+	val isJal = headEntry.op === "b1101111".U
 	val isStore = headEntry.op === "b0100011".U
 	val headReady = count =/= 0.U && headEntry.valid && headEntry.ready
 
@@ -122,14 +130,20 @@ class ReorderBuffer(entries: Int = 32) extends Module {
 	commitStoreReg := false.B
 	clearReg := false.B
 
-	when(headReady && (isBranch || isJalr)) {
+	when(headReady && (isBranch || isJalr || isJal)) {
 		pcResetReg := pcResetTable(head) & (~3.U(32.W))
 	}
 
 	when(headReady) {
-		val mispredict = (isBranch || isJalr) && (headEntry.value =/= headEntry.prediction)
+		val mispredict = (isBranch || isJalr || isJal) && (headEntry.value =/= headEntry.prediction)
 		when(mispredict) {
 			clearReg := true.B
+			when(headEntry.rd =/= 0.U && !isStore) {
+				writebackValidReg := true.B
+				writebackIndexReg := headEntry.rd
+				writebackTagReg := head
+				writebackValueReg := headEntry.value
+			}
 			for (i <- 0 until entries) {
 				entriesReg(i).valid := false.B
 				entriesReg(i).ready := false.B

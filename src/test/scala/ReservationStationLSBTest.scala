@@ -7,11 +7,25 @@ import chiseltest._
 import utils._
 
 class ReservationStationLSBTest extends AnyFlatSpec with ChiselScalatestTester {
+  private def initRfAndRob(c: ReservationStationLSB): Unit = {
+    for (i <- 0 until 32) {
+      c.io.rf_entries(i).value.poke(0.U)
+      c.io.rf_entries(i).tag.poke(0.U)
+      c.io.rf_entries(i).tag_valid.poke(false.B)
+      c.io.rob_entries(i).valid.poke(false.B)
+      c.io.rob_entries(i).value.poke(0.U)
+    }
+    c.io.cdb.valid.poke(false.B)
+    c.io.cdb.bits.index.poke(0.U)
+    c.io.cdb.bits.value.poke(0.U)
+  }
+
   "ReservationStationLSB" should "issue and execute a load with ready operands" in {
     test(new ReservationStationLSB(4)) { c =>
-      c.io.reset.poke(true.B)
+      c.io.clear.poke(true.B)
       c.clock.step(1)
-      c.io.reset.poke(false.B)
+      c.io.clear.poke(false.B)
+      initRfAndRob(c)
 
       // Setup RF: reg 1 has value 100, no tag
       c.io.rf_entries(1).value.poke(100.U)
@@ -25,7 +39,7 @@ class ReservationStationLSBTest extends AnyFlatSpec with ChiselScalatestTester {
       c.io.issue_bits.op2_index.poke(1.U) // base x1
       c.io.issue_bits.op3_value.poke(4.U) // offset
       c.io.issue_bits.dest_tag.poke(1.U)
-      c.io.cdb_valid.poke(false.B)
+      c.io.cdb.valid.poke(false.B)
 
       c.clock.step(1)
 
@@ -39,9 +53,10 @@ class ReservationStationLSBTest extends AnyFlatSpec with ChiselScalatestTester {
 
   "ReservationStationLSB" should "handle load with pending operand" in {
     test(new ReservationStationLSB(4)) { c =>
-      c.io.reset.poke(true.B)
+      c.io.clear.poke(true.B)
       c.clock.step(1)
-      c.io.reset.poke(false.B)
+      c.io.clear.poke(false.B)
+      initRfAndRob(c)
 
       // RF: reg 1 has tag 2 (pending)
       c.io.rf_entries(1).tag.poke(2.U)
@@ -55,16 +70,16 @@ class ReservationStationLSBTest extends AnyFlatSpec with ChiselScalatestTester {
       c.io.issue_bits.op2_index.poke(1.U)
       c.io.issue_bits.op3_value.poke(4.U)
       c.io.issue_bits.dest_tag.poke(1.U)
-      c.io.cdb_valid.poke(false.B)
+      c.io.cdb.valid.poke(false.B)
 
       c.clock.step(1)
 
       c.io.exec_valid.expect(false.B) // not ready
 
       // CDB broadcast for tag 2
-      c.io.cdb_valid.poke(true.B)
-      c.io.cdb_tag.poke(2.U)
-      c.io.cdb_value.poke(200.U)
+      c.io.cdb.valid.poke(true.B)
+      c.io.cdb.bits.index.poke(2.U)
+      c.io.cdb.bits.value.poke(200.U)
       c.io.issue_valid.poke(false.B)
 
       c.clock.step(1)
@@ -82,9 +97,10 @@ class ReservationStationLSBTest extends AnyFlatSpec with ChiselScalatestTester {
 
   "ReservationStationLSB" should "handle store with pending operands" in {
     test(new ReservationStationLSB(4)) { c =>
-      c.io.reset.poke(true.B)
+      c.io.clear.poke(true.B)
       c.clock.step(1)
-      c.io.reset.poke(false.B)
+      c.io.clear.poke(false.B)
+      initRfAndRob(c)
 
       // RF: reg 1 ready, reg 2 pending tag 3
       c.io.rf_entries(1).value.poke(100.U)
@@ -100,7 +116,7 @@ class ReservationStationLSBTest extends AnyFlatSpec with ChiselScalatestTester {
       c.io.issue_bits.op2_index.poke(1.U) // base x1
       c.io.issue_bits.op3_value.poke(8.U) // offset
       c.io.issue_bits.dest_tag.poke(1.U)
-      c.io.cdb_valid.poke(false.B)
+      c.io.cdb.valid.poke(false.B)
 
       c.clock.step(1)
 
@@ -114,9 +130,10 @@ class ReservationStationLSBTest extends AnyFlatSpec with ChiselScalatestTester {
 
   "ReservationStationLSB" should "execute in order" in {
     test(new ReservationStationLSB(4)) { c =>
-      c.io.reset.poke(true.B)
+      c.io.clear.poke(true.B)
       c.clock.step(1)
-      c.io.reset.poke(false.B)
+      c.io.clear.poke(false.B)
+      initRfAndRob(c)
 
       c.io.rf_entries(1).value.poke(100.U)
       c.io.rf_entries(1).tag_valid.poke(false.B)
@@ -131,7 +148,7 @@ class ReservationStationLSBTest extends AnyFlatSpec with ChiselScalatestTester {
       c.io.issue_bits.op2_index.poke(1.U)
       c.io.issue_bits.op3_value.poke(4.U)
       c.io.issue_bits.dest_tag.poke(1.U)
-      c.io.cdb_valid.poke(false.B)
+      c.io.cdb.valid.poke(false.B)
 
       c.clock.step(1)
 
@@ -159,9 +176,10 @@ class ReservationStationLSBTest extends AnyFlatSpec with ChiselScalatestTester {
 
   "ReservationStationLSB" should "handle reset" in {
     test(new ReservationStationLSB(4)) { c =>
-      c.io.reset.poke(true.B)
+      c.io.clear.poke(true.B)
       c.clock.step(1)
-      c.io.reset.poke(false.B)
+      c.io.clear.poke(false.B)
+      initRfAndRob(c)
 
 
       // Issue something
@@ -171,13 +189,13 @@ class ReservationStationLSBTest extends AnyFlatSpec with ChiselScalatestTester {
       c.io.issue_bits.op2_index.poke(1.U)
       c.io.issue_bits.op3_value.poke(4.U)
       c.io.issue_bits.dest_tag.poke(1.U)
-      c.io.cdb_valid.poke(false.B)
+      c.io.cdb.valid.poke(false.B)
 
       c.clock.step(1)
 
       c.io.exec_valid.expect(true.B)
 
-      c.io.reset.poke(true.B)
+      c.io.clear.poke(true.B)
       c.io.issue_valid.poke(false.B)
       c.clock.step(1)
 

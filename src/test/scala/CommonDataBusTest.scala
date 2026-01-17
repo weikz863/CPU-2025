@@ -9,7 +9,7 @@ import utils._
 class CommonDataBusTest extends AnyFlatSpec with ChiselScalatestTester {
   "CommonDataBus" should "initialize correctly" in {
     test(new CommonDataBus) { c =>
-      c.io.reset.poke(false.B)
+      c.io.clear.poke(false.B)
       c.io.lsb.valid.poke(false.B)
       c.io.alu.valid.poke(false.B)
       c.clock.step(1)
@@ -22,7 +22,7 @@ class CommonDataBusTest extends AnyFlatSpec with ChiselScalatestTester {
   "CommonDataBus" should "broadcast LSB result to all consumers" in {
     test(new CommonDataBus) { c =>
       // Send data from LSB
-      c.io.reset.poke(false.B)
+      c.io.clear.poke(false.B)
       c.io.lsb.valid.poke(true.B)
       c.io.lsb.bits.index.poke(5.U)
       c.io.lsb.bits.value.poke(0x12345678.U)
@@ -51,7 +51,7 @@ class CommonDataBusTest extends AnyFlatSpec with ChiselScalatestTester {
   "CommonDataBus" should "broadcast ALU result to all consumers" in {
     test(new CommonDataBus) { c =>
       // Send data from ALU
-      c.io.reset.poke(false.B)
+      c.io.clear.poke(false.B)
       c.io.lsb.valid.poke(false.B)
       c.io.alu.valid.poke(true.B)
       c.io.alu.bits.index.poke(10.U)
@@ -79,7 +79,7 @@ class CommonDataBusTest extends AnyFlatSpec with ChiselScalatestTester {
 
   "CommonDataBus" should "handle round-robin arbitration" in {
     test(new CommonDataBus) { c =>
-      c.io.reset.poke(false.B)
+      c.io.clear.poke(false.B)
       
       // First, send from LSB
       c.io.lsb.valid.poke(true.B)
@@ -124,7 +124,7 @@ class CommonDataBusTest extends AnyFlatSpec with ChiselScalatestTester {
 
   "CommonDataBus" should "handle simultaneous inputs with round-robin priority" in {
     test(new CommonDataBus) { c =>
-      c.io.reset.poke(false.B)
+      c.io.clear.poke(false.B)
       
       // Send from both LSB and ALU simultaneously
       c.io.lsb.valid.poke(true.B)
@@ -162,14 +162,14 @@ class CommonDataBusTest extends AnyFlatSpec with ChiselScalatestTester {
   "CommonDataBus" should "handle reset correctly" in {
     test(new CommonDataBus) { c =>
       // Send some data first
-      c.io.reset.poke(false.B)
+      c.io.clear.poke(false.B)
       c.io.lsb.valid.poke(true.B)
       c.io.lsb.bits.index.poke(5.U)
       c.io.lsb.bits.value.poke(0x12345678.U)
       c.clock.step(1)
       
       // Now reset
-      c.io.reset.poke(true.B)
+      c.io.clear.poke(true.B)
       c.clock.step(1)
       
       // Should output nothing and clear queues
@@ -178,7 +178,7 @@ class CommonDataBusTest extends AnyFlatSpec with ChiselScalatestTester {
       c.io.rob.valid.expect(false.B)
       
       // After reset, should work normally again
-      c.io.reset.poke(false.B)
+      c.io.clear.poke(false.B)
       c.io.lsb.valid.poke(true.B)
       c.io.lsb.bits.index.poke(6.U)
       c.io.lsb.bits.value.poke("h87654321".U)
@@ -193,7 +193,7 @@ class CommonDataBusTest extends AnyFlatSpec with ChiselScalatestTester {
 
   "CommonDataBus" should "handle multiple consumers simultaneously" in {
     test(new CommonDataBus) { c =>
-      c.io.reset.poke(false.B)
+      c.io.clear.poke(false.B)
       
       // Send data from ALU
       c.io.alu.valid.poke(true.B)
@@ -222,7 +222,7 @@ class CommonDataBusTest extends AnyFlatSpec with ChiselScalatestTester {
 
   "CommonDataBus" should "handle idle periods correctly" in {
     test(new CommonDataBus) { c =>
-      c.io.reset.poke(false.B)
+      c.io.clear.poke(false.B)
       
       // Send some data
       c.io.lsb.valid.poke(true.B)
@@ -259,7 +259,7 @@ class CommonDataBusTest extends AnyFlatSpec with ChiselScalatestTester {
 
   "CommonDataBus" should "handle different ROB indices correctly" in {
     test(new CommonDataBus) { c =>
-      c.io.reset.poke(false.B)
+      c.io.clear.poke(false.B)
       
       // Test with various ROB indices
       val testIndices = Seq(0, 1, 15, 31) // Test boundary values
@@ -282,7 +282,7 @@ class CommonDataBusTest extends AnyFlatSpec with ChiselScalatestTester {
 
   "CommonDataBus" should "handle zero values correctly" in {
     test(new CommonDataBus) { c =>
-      c.io.reset.poke(false.B)
+      c.io.clear.poke(false.B)
       
       // Send zero value
       c.io.alu.valid.poke(true.B)

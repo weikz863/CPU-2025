@@ -17,6 +17,9 @@ class ReservationStationsTest extends AnyFlatSpec with ChiselScalatestTester {
       c.io.rob_values(i).valid.poke(false.B)
       c.io.rob_values(i).value.poke(0.U)
     }
+    c.io.cdb.valid.poke(false.B)
+    c.io.cdb.bits.index.poke(0.U)
+    c.io.cdb.bits.value.poke(0.U)
   }
 
   it should "立即数与就绪寄存器操作数可直接发射" in {
@@ -72,9 +75,9 @@ class ReservationStationsTest extends AnyFlatSpec with ChiselScalatestTester {
 
       // CDB 广播 tag 2 的值
       c.io.issue_valid.poke(false.B)
-      c.io.cdb_valid.poke(true.B)
-      c.io.cdb_tag.poke(2.U)
-      c.io.cdb_value.poke(11.U)
+      c.io.cdb.valid.poke(true.B)
+      c.io.cdb.bits.index.poke(2.U)
+      c.io.cdb.bits.value.poke(11.U)
 
       c.clock.step()
 
@@ -121,9 +124,9 @@ class ReservationStationsTest extends AnyFlatSpec with ChiselScalatestTester {
 
       // CDB 为队头补全操作数
       c.io.issue_valid.poke(false.B)
-      c.io.cdb_valid.poke(true.B)
-      c.io.cdb_tag.poke(6.U)
-      c.io.cdb_value.poke(30.U)
+      c.io.cdb.valid.poke(true.B)
+      c.io.cdb.bits.index.poke(6.U)
+      c.io.cdb.bits.value.poke(30.U)
       c.clock.step()
 
       // 先发射指令 1

@@ -4,7 +4,7 @@ import utils._
 
 class CommonDataBus extends Module {
   val io = IO(new Bundle {
-    val reset = Input(Bool())
+    val clear = Input(Bool())
     val lsb = Flipped(ValidIO(new CDBData))
     val alu = Flipped(ValidIO(new CDBData))
     val rs = ValidIO(new CDBData)
@@ -17,10 +17,10 @@ class CommonDataBus extends Module {
 
   lsbQueue.io.enq.valid <> io.lsb.valid
   lsbQueue.io.enq.bits <> io.lsb.bits
-  lsbQueue.io.clear <> io.reset
+  lsbQueue.io.clear <> io.clear
   aluQueue.io.enq.valid <> io.alu.valid
   aluQueue.io.enq.bits <> io.alu.bits
-  aluQueue.io.clear <> io.reset
+  aluQueue.io.clear <> io.clear
 
   assert(lsbQueue.io.enq.ready, "lsbQueue overflow")
   assert(aluQueue.io.enq.ready, "aluQueue overflow")
@@ -30,7 +30,7 @@ class CommonDataBus extends Module {
   arbiter.io.in(1) <> aluQueue.io.deq
   arbiter.io.out.ready := true.B  // Consumers are always ready
 
-  when(io.reset) {
+  when(io.clear) {
     io.rs.valid := false.B
     io.rs.bits := 0.U.asTypeOf(new CDBData)
     io.rf.valid := false.B
