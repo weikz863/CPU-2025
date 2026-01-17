@@ -31,6 +31,10 @@ class InstructionFetch(queueDepth: Int = 4) extends Module {
     // downstream consumer (ROB/RS/LSB)
     val out = Decoupled(new IFDecoded)
 
+    // JAL handling
+    val jalPc = Input(UInt(32.W))
+    val jalValid = Input(Bool())
+
     // debug
     val debug_pc = Output(UInt(32.W))
   })
@@ -43,7 +47,7 @@ class InstructionFetch(queueDepth: Int = 4) extends Module {
   when(io.clear || io.resetValid) {
     pcReg := Mux(io.resetValid, io.resetPC & ~3.U, 0.U)
   }.elsewhen(issuing) {
-    pcReg := pcReg + 4.U
+    pcReg := Mux(io.jalValid, io.jalPc, pcReg + 4.U)
   }
 
   // request when queue can accept and memory ready

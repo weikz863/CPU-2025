@@ -4,10 +4,10 @@ import org.scalatest.flatspec.AnyFlatSpec
 
 class CoreExampleTest extends AnyFlatSpec with ChiselScalatestTester {
   "Core" should "test example.data" in {
-    test(new Core(initFile = "src/test/resources/example.data", memSize = 4096, memDelay = 4)) { c =>
+    test(new Core(initFile = "docs/memory-example.data", memSize = 4096, memDelay = 4)) { c =>
       // run until halted
       var cycles = 0
-      while (cycles < 10000 && !c.io.halted.peek().litToBoolean) {
+      while (cycles < 1000 && !c.io.halted.peek().litToBoolean) {
         c.clock.step()
         cycles += 1
         // check for commit

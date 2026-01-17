@@ -52,6 +52,7 @@ class ReorderBuffer(entries: Int = 32) extends Module {
 	  val commit_store = Output(Bool())
 	  val clear = Output(Bool())
 	  val pc_reset = Output(UInt(32.W))
+	  val pc_reset_valid = Output(Bool())
 
 	  // debug
 	  val debug_commit_op = Output(UInt(7.W))
@@ -62,6 +63,7 @@ class ReorderBuffer(entries: Int = 32) extends Module {
 	val count = RegInit(0.U((idxWidth + 1).W))
 	val entriesReg = RegInit(VecInit(Seq.fill(entries)(0.U.asTypeOf(new Entry()))))
 	val pcResetTable = RegInit(VecInit(Seq.fill(entries)(0.U(32.W))))
+	val pcResetValidReg = RegInit(false.B)
 
 	// one-cycle outputs for commit/clear paths
 	val writebackValidReg = RegInit(false.B)
@@ -82,6 +84,8 @@ class ReorderBuffer(entries: Int = 32) extends Module {
 	io.commit_store := commitStoreReg
 	io.clear := clearReg
 	io.pc_reset := pcResetReg
+	io.pc_reset_valid := pcResetValidReg
+	pcResetValidReg := false.B
 
 	// broadcast table for RS
 	for (i <- 0 until entries) {
@@ -103,6 +107,7 @@ class ReorderBuffer(entries: Int = 32) extends Module {
 
 		when(io.issue_bits.op === "b1100011".U || io.issue_bits.op === "b1100111".U) {
 			pcResetReg := io.issue_bits.pc_reset & (~3.U(32.W))
+			pcResetValidReg := true.B
 		}
 	}
 
@@ -140,7 +145,7 @@ class ReorderBuffer(entries: Int = 32) extends Module {
 	}
 
 	when(headReady) {
-		val mispredict = (isBranch || isJalr || isJal) && (headEntry.value =/= headEntry.prediction)
+		val mispredict = (isBranch || isJalr) && (headEntry.value =/= headEntry.prediction)
 		when(mispredict) {
 			clearReg := true.B
 			when(headEntry.rd =/= 0.U && !isStore) {

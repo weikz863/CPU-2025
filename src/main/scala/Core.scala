@@ -23,10 +23,15 @@ class Core(initFile: String = "", memSize: Int = 4096, memDelay: Int = 4) extend
 
   val globalClear = reset.asBool || rob.io.clear
 
+  val jalPc = WireDefault(0.U(32.W))
+  val jalValid = WireDefault(false.B)
+
   // Instruction Fetch connections
   ifu.io.clear := globalClear
-  ifu.io.resetValid := rob.io.clear
+  ifu.io.resetValid := rob.io.clear || rob.io.pc_reset_valid
   ifu.io.resetPC := rob.io.pc_reset
+  ifu.io.jalPc := jalPc
+  ifu.io.jalValid := jalValid
 
   // Memory instruction side
   mem.io.clear := globalClear
@@ -165,6 +170,8 @@ class Core(initFile: String = "", memSize: Int = 4096, memDelay: Int = 4) extend
       robPcReset := pc + imm
       robPrediction := 0.U
       writeDest := rd =/= 0.U
+      jalValid := willFire
+      jalPc := pc + imm
     }
     is("b1100111".U) { // JALR
       willFire := instrValid && issueReadyALU
